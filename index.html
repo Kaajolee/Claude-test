@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Gamified portfolio — 3D environment artist." />
+    <title>Portfolio — 3D Environment Artist</title>
+    <link rel="stylesheet" href="/src/ui/overlay.css" />
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+    <div id="overlay">
+      <section id="gate">
+        <h1>Your Name</h1>
+        <p class="subtitle">3D Environment Artist</p>
+        <div class="actions">
+          <button id="enter">Enter gallery</button>
+          <button id="recruiter" class="ghost">Recruiter view</button>
+        </div>
+        <p class="hint-small">WASD to move · Mouse to look · E to interact · Esc to release cursor</p>
+      </section>
+
+      <section id="recruiter-view" hidden>
+        <div class="doc">
+          <h1>Your Name</h1>
+          <p class="subtitle">3D Environment Artist — CV</p>
+          <p>Replace this block with your bio, project list, and contact links.</p>
+          <button id="back-to-gallery" class="ghost">Back</button>
+        </div>
+      </section>
+
+      <div id="hud" hidden>
+        <span id="hint"></span>
+        <button id="exit-hud" class="ghost small">Exit</button>
+      </div>
+
+      <div id="loading" hidden>Loading…</div>
+
+      <div id="unity-container" hidden>
+        <canvas id="unity-canvas"></canvas>
+        <button id="unity-exit" class="ghost small">Exit game</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
