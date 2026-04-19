@@ -22,7 +22,7 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 const player = new Player(camera, document.body);
-const { pedestal } = buildGallery(scene);
+const { pedestal } = buildGallery(scene, renderer);
 const overlay = new Overlay();
 overlay.setMode('gate');
 

@@ -1,10 +1,14 @@
 import * as THREE from 'three';
+import { loadOptional } from '../loader';
 
 export interface Gallery {
   pedestal: THREE.Object3D;
 }
 
-export function buildGallery(scene: THREE.Scene): Gallery {
+// Drop a .glb at this path and it will replace the procedural baseline.
+const HERO_MODEL_URL = '/models/room.glb';
+
+export function buildGallery(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Gallery {
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(20, 20),
     new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.9 })
@@ -55,6 +59,11 @@ export function buildGallery(scene: THREE.Scene): Gallery {
   pedestal.add(column);
 
   scene.add(pedestal);
+
+  // Async-load the artist's hero scene if present. Falls back silently.
+  void loadOptional(HERO_MODEL_URL, renderer).then((gltf) => {
+    if (gltf) scene.add(gltf.scene);
+  });
 
   return { pedestal };
 }
