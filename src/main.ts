@@ -4,6 +4,7 @@ import { buildGallery } from './rooms/gallery';
 import { Overlay, type Mode } from './ui/overlay';
 import { launchUnity, type UnityHandle } from './unity-bridge';
 import { AdaptiveDPR } from './perf';
+import { prefetchMany } from './prefetch';
 
 interface Stage {
   renderer: THREE.WebGLRenderer;
@@ -21,10 +22,14 @@ overlay.setMode(currentMode);
 let stage: Stage | null = null;
 let unityHandle: UnityHandle | null = null;
 let nearPedestal = false;
+let prefetchedUnity = false;
 let enteringUnity = false;
 let running = false;
 let rafId = 0;
 const clock = new THREE.Clock();
+
+const INTERACT_RADIUS = 2.5;
+const PREFETCH_RADIUS = 6;
 
 function setMode(mode: Mode) {
   currentMode = mode;
@@ -59,9 +64,19 @@ function tick() {
 
   const dist = stage.camera.position.distanceTo(stage.pedestal.position);
   const wasNear = nearPedestal;
-  nearPedestal = dist < 2.5;
+  nearPedestal = dist < INTERACT_RADIUS;
   if (nearPedestal !== wasNear && stage.player.isLocked) {
     overlay.setHint(nearPedestal ? 'Press E to play the Unity build' : '');
+  }
+
+  if (!prefetchedUnity && dist < PREFETCH_RADIUS) {
+    prefetchedUnity = true;
+    prefetchMany([
+      ['/unity/Build/portfolio.loader.js', 'script'],
+      '/unity/Build/portfolio.data',
+      '/unity/Build/portfolio.wasm',
+      ['/unity/Build/portfolio.framework.js', 'script'],
+    ]);
   }
 
   stage.renderer.render(stage.scene, stage.camera);
