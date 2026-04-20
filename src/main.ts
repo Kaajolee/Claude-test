@@ -6,6 +6,8 @@ import { launchUnity, type UnityHandle } from './unity-bridge';
 import { AdaptiveDPR } from './perf';
 import { prefetchMany } from './prefetch';
 
+console.log('[app] booted');
+
 interface Stage {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
@@ -37,9 +39,6 @@ function setMode(mode: Mode) {
   updateRunning();
 }
 
-// The render loop only runs when the tab is visible AND the user is in the
-// gallery. Anywhere else (gate, recruiter view, Unity) we cancel the RAF so
-// the GPU and main thread idle completely.
 function updateRunning() {
   const shouldRun =
     stage !== null &&
@@ -47,6 +46,7 @@ function updateRunning() {
     currentMode === 'gallery';
   if (shouldRun === running) return;
   running = shouldRun;
+  console.log(`[runloop] ${running ? 'resumed' : 'paused'} (mode=${currentMode}, visible=${document.visibilityState === 'visible'})`);
   if (running && stage) {
     clock.start();
     stage.adaptiveDpr.reset();
@@ -66,11 +66,13 @@ function tick() {
   const wasNear = nearPedestal;
   nearPedestal = dist < INTERACT_RADIUS;
   if (nearPedestal !== wasNear && stage.player.isLocked) {
+    console.log(`[pedestal] ${nearPedestal ? 'entered' : 'left'} interact range (${dist.toFixed(2)}m)`);
     overlay.setHint(nearPedestal ? 'Press E to play the Unity build' : '');
   }
 
   if (!prefetchedUnity && dist < PREFETCH_RADIUS) {
     prefetchedUnity = true;
+    console.log('[pedestal] crossed prefetch radius → prefetching Unity build');
     prefetchMany([
       ['/unity/Build/portfolio.loader.js', 'script'],
       '/unity/Build/portfolio.data',
@@ -85,6 +87,7 @@ function tick() {
 }
 
 function initStage(): Stage {
+  console.log('[stage] initializing WebGL renderer + scene');
   const canvas = document.getElementById('scene') as HTMLCanvasElement;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -106,7 +109,11 @@ function initStage(): Stage {
   const player = new Player(camera, document.body);
   const { pedestal } = buildGallery(scene, renderer);
 
+  player.controls.addEventListener('lock', () => {
+    console.log('[player] pointer locked');
+  });
   player.controls.addEventListener('unlock', () => {
+    console.log('[player] pointer unlocked');
     if (unityHandle || enteringUnity) return;
     setMode('gate');
   });
@@ -117,6 +124,7 @@ function initStage(): Stage {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
+  console.log(`[stage] ready (DPR=${adaptiveDpr.current})`);
   return { renderer, scene, camera, player, pedestal, adaptiveDpr };
 }
 
@@ -132,10 +140,14 @@ overlay.onExitGallery = () => {
   setMode('gate');
 };
 
-document.addEventListener('visibilitychange', updateRunning);
+document.addEventListener('visibilitychange', () => {
+  console.log(`[visibility] ${document.visibilityState}`);
+  updateRunning();
+});
 
 async function enterUnity() {
   if (!stage || unityHandle || enteringUnity) return;
+  console.log('[unity] pressing E → launching');
   enteringUnity = true;
   stage.player.unlock();
   setMode('unity');
@@ -145,16 +157,17 @@ async function enterUnity() {
   const unityCanvas = document.getElementById('unity-canvas') as HTMLCanvasElement;
 
   unityHandle = await launchUnity(container, unityCanvas, (event) => {
-    // Unity -> JS. Hook badges, scene unlocks, analytics here.
     console.log('[unity→js]', event);
   });
 
   overlay.setLoading(false);
   enteringUnity = false;
+  console.log('[unity] launched');
 }
 
 async function exitUnity() {
   if (!stage || !unityHandle) return;
+  console.log('[unity] exiting');
   const h = unityHandle;
   unityHandle = null;
   await h.quit();
@@ -163,6 +176,7 @@ async function exitUnity() {
 }
 
 document.getElementById('unity-exit')!.addEventListener('click', () => {
+  console.log('[ui] click: Exit game');
   void exitUnity();
 });
 

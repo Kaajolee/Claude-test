@@ -13,13 +13,26 @@ export class Overlay {
   onExitGallery: () => void = () => {};
 
   constructor() {
-    el('enter').addEventListener('click', () => this.onEnter());
-    el('recruiter').addEventListener('click', () => this.onRecruiter());
-    el('back-to-gallery').addEventListener('click', () => this.onExitRecruiter());
-    el('exit-hud').addEventListener('click', () => this.onExitGallery());
+    el('enter').addEventListener('click', () => {
+      console.log('[ui] click: Enter gallery');
+      this.onEnter();
+    });
+    el('recruiter').addEventListener('click', () => {
+      console.log('[ui] click: Recruiter view');
+      this.onRecruiter();
+    });
+    el('back-to-gallery').addEventListener('click', () => {
+      console.log('[ui] click: Back (recruiter -> gate)');
+      this.onExitRecruiter();
+    });
+    el('exit-hud').addEventListener('click', () => {
+      console.log('[ui] click: Exit (gallery -> gate)');
+      this.onExitGallery();
+    });
   }
 
   setMode(mode: Mode) {
+    console.log(`[ui] setMode: ${mode}`);
     el('gate').hidden = mode !== 'gate';
     el('recruiter-view').hidden = mode !== 'recruiter';
     el('hud').hidden = mode !== 'gallery';
