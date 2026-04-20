@@ -1,18 +1,26 @@
 import * as THREE from 'three';
-import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import type { GLTFLoader, GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-// Decoder paths. For production, vendor these into /public/ and update the
-// paths to '/draco/' and '/basis/'. The CDN versions work for local dev.
-const DRACO_PATH = 'https://www.gstatic.com/draco/v1/decoders/';
-const BASIS_PATH = 'https://unpkg.com/three@0.160.0/examples/jsm/libs/basis/';
+// Decoders are vendored under /public by scripts/vendor-decoders.mjs.
+const DRACO_PATH = '/draco/';
+const BASIS_PATH = '/basis/';
 
-let cached: GLTFLoader | null = null;
+let loaderPromise: Promise<GLTFLoader> | null = null;
 
-export function getLoader(renderer: THREE.WebGLRenderer): GLTFLoader {
-  if (cached) return cached;
+// All loader subclasses + the WASM/JS decoders are dynamically imported so
+// they ship in a separate chunk and only download once a model actually loads.
+async function buildLoader(renderer: THREE.WebGLRenderer): Promise<GLTFLoader> {
+  const [
+    { GLTFLoader: GLTFLoaderCtor },
+    { DRACOLoader },
+    { KTX2Loader },
+    { MeshoptDecoder },
+  ] = await Promise.all([
+    import('three/examples/jsm/loaders/GLTFLoader.js'),
+    import('three/examples/jsm/loaders/DRACOLoader.js'),
+    import('three/examples/jsm/loaders/KTX2Loader.js'),
+    import('three/examples/jsm/libs/meshopt_decoder.module.js'),
+  ]);
 
   const draco = new DRACOLoader();
   draco.setDecoderPath(DRACO_PATH);
@@ -21,13 +29,16 @@ export function getLoader(renderer: THREE.WebGLRenderer): GLTFLoader {
   ktx2.setTranscoderPath(BASIS_PATH);
   ktx2.detectSupport(renderer);
 
-  const loader = new GLTFLoader();
+  const loader = new GLTFLoaderCtor();
   loader.setDRACOLoader(draco);
   loader.setKTX2Loader(ktx2);
   loader.setMeshoptDecoder(MeshoptDecoder);
-
-  cached = loader;
   return loader;
+}
+
+export function getLoader(renderer: THREE.WebGLRenderer): Promise<GLTFLoader> {
+  if (!loaderPromise) loaderPromise = buildLoader(renderer);
+  return loaderPromise;
 }
 
 export interface LoadOptions {
@@ -43,7 +54,8 @@ export async function loadModel(
   renderer: THREE.WebGLRenderer,
   opts: LoadOptions = {}
 ): Promise<GLTF> {
-  const gltf = await getLoader(renderer).loadAsync(url, opts.onProgress);
+  const loader = await getLoader(renderer);
+  const gltf = await loader.loadAsync(url, opts.onProgress);
   applyOptions(gltf.scene, opts);
   return gltf;
 }
@@ -75,7 +87,10 @@ function applyOptions(root: THREE.Object3D, opts: LoadOptions) {
   if (opts.shadows ?? true) {
     root.traverse((o) => {
       const m = o as THREE.Mesh;
-      if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; }
+      if (m.isMesh) {
+        m.castShadow = true;
+        m.receiveShadow = true;
+      }
     });
   }
 }

@@ -5,3 +5,7 @@ dist
 .env
 .env.local
 .vite
+
+# Vendored from node_modules/three by scripts/vendor-decoders.mjs
+public/draco
+public/basis
